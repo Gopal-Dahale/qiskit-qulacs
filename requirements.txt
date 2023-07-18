@@ -1,0 +1,6 @@
+importlib_metadata==5.0.0
+numpy==1.23.5
+qiskit==0.43.2
+qiskit_ibmq_provider==0.20.2
+qiskit_terra==0.24.1
+qulacs==0.6.1
