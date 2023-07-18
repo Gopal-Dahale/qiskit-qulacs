@@ -47,7 +47,9 @@ coverage.xml
 
 # virtualenv
 ENV/
+qislacs
 
 # Sphinx documentation
 docs/_build/
 docs/stubs/
+qiskit-qulacs-backend.ipynb
