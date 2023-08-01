@@ -4,26 +4,36 @@ Qiskit-Qulacs documentation
 
 Qiskit-Qulacs allows user to execute Qiskit programs using Qulacs backend.
 
-API references
+.. toctree::
+  :maxdepth: 1
+  :caption: Get Started
+  :hidden:
+
+  intro/beginners_guide
+  intro/INSTALL
+  intro/project_overview
+  intro/quickstart_guide
 
 .. toctree::
-  :maxdepth: 2
-
-  API References <apidocs/index>
-
-How-to guides
-
-.. toctree::
-  :maxdepth: 2
+  :maxdepth: 1
+  :caption: How-to guides
+  :hidden:
 
   How-to guides <how_tos/index>
 
-Tutorials
-
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 1
+  :caption: Tutorials
+  :hidden:
 
   Tutorials <tutorials/index>
+
+.. toctree::
+  :maxdepth: 1
+  :caption: API References
+  :hidden:
+
+  API References <apidocs/index>
 
 .. Hiding - Indices and tables
    :ref:`genindex`

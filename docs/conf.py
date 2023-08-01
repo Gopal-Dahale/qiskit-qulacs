@@ -51,6 +51,8 @@ extensions = [
     "sphinx_autodoc_typehints",
     "reno.sphinxext",
     "nbsphinx",
+    "myst_parser",
+    "qiskit_sphinx_theme",
 ]
 templates_path = ["_templates"]
 numfig = True
@@ -61,6 +63,7 @@ add_module_names = False
 modindex_common_prefix = ["qiskit_qulacs."]
 
 # html theme options
+html_theme = "qiskit-ecosystem"
 html_static_path = ["_static"]
 html_logo = "_static/images/logo.png"
 
