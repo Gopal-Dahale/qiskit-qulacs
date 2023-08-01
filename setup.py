@@ -24,8 +24,7 @@ version = version_dict["__version__"]
 
 setuptools.setup(
     name="qiskit_qulacs",
-    description="Qiskit Qulacs to execute Qiskit "
-    "programs using Qulacs as backend.",
+    description="Qiskit Qulacs to execute Qiskit " "programs using Qulacs as backend.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     keywords="qiskit qulacs quantum",
