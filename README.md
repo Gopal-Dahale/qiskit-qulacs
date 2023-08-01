@@ -16,10 +16,10 @@ Qiskit-Qulacs allows users to execute Qiskit programs using Qulacs backend.
 
 
 
-1.  [About](docs/project_overview.md)
-2.  [Beginner's Guide](docs/beginners_guide.md)
-3.  [Installation](INSTALL.md)
-4.  [Quickstart Guide](docs/quickstart_guide.md)
+1.  [About](docs/intro/project_overview.md)
+2.  [Beginner's Guide](docs/intro/beginners_guide.md)
+3.  [Installation](docs/intro/INSTALL.md)
+4.  [Quickstart Guide](docs/intro/quickstart_guide.md)
 5.  [Tutorials](docs/tutorials/)
 6.  [How-Tos](docs/how_tos/)
 8.  [How to Give Feedback](#how-to-give-feedback)
