@@ -1,9 +1,13 @@
+"""QulacsProvider class."""
 from qiskit.providers import ProviderV1 as Provider
 from qiskit.providers.providerutils import filter_backends
 
 from .qulacs_backend import QulacsBackend
 
+
 class QulacsProvider(Provider):
+    """QulacsProvider class."""
+
     def __init__(self, token=None):
         super().__init__()
         self.token = token
@@ -13,6 +17,7 @@ class QulacsProvider(Provider):
 
         if name:
             backends = [
-                backend for backend in backends if backend.name == name]
+                backend for backend in backends if backend.name == name
+            ]
 
         return filter_backends(backends, filters=filters, **kwargs)
