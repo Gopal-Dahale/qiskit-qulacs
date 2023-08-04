@@ -2,7 +2,7 @@ from unittest import TestCase
 import pytest
 from qiskit_qulacs.adapter import convert_qiskit_to_qulacs_circuit
 from qiskit_qulacs.qulacs_backend import QulacsBackend
-from qulacs import QuantumState
+from qulacs import QuantumState, ParametricQuantumCircuit
 import numpy as np
 from qiskit import QuantumCircuit, BasicAer, execute
 from qiskit import extensions as ex
@@ -190,3 +190,39 @@ class TestAdapter(TestCase):
         qiskit_result = qiskit_job.result().get_statevector()
 
         self.assertTrue(np.linalg.norm(qulacs_result - qiskit_result) < _EPS)
+
+    def test_convert_parametric_qiskit_to_qulacs_circuit(self):
+        """Tests convert_qiskit_to_qulacs_circuit works with parametric circuits."""
+
+        theta = Parameter("θ")
+        phi = Parameter("φ")
+        lam = Parameter("λ")
+
+        params = np.array([np.pi, np.pi / 2, np.pi / 3])
+
+        qiskit_circuit = QuantumCircuit(1, 1)
+        qiskit_circuit.rx(theta, 0)
+        qiskit_circuit.ry(phi, 0)
+        qiskit_circuit.rz(lam, 0)
+
+        qulacs_circuit_builder, _ = convert_qiskit_to_qulacs_circuit(qiskit_circuit)
+        qulacs_circuit = qulacs_circuit_builder(params)
+        quantum_state = QuantumState(1)
+        qulacs_circuit.update_quantum_state(quantum_state)
+        qulacs_result = quantum_state.get_vector()
+
+        # https://qiskit.org/documentation/stubs/qiskit.circuit.QuantumCircuit.html#qiskit.circuit.QuantumCircuit.parameters
+        # Based on the above docs, the Paramters are sorted alphabetically.
+        # Therefore θ, φ, λ should be sorted as θ, λ, φ.
+        # so θ = params[0], λ = params[1], φ = params[2]
+        # Also, the sign of the rotation is negative in qulacs.
+
+        qulacs_circuit_ans = ParametricQuantumCircuit(1)
+        qulacs_circuit_ans.add_parametric_RX_gate(0, -params[0])
+        qulacs_circuit_ans.add_parametric_RY_gate(0, -params[2])
+        qulacs_circuit_ans.add_parametric_RZ_gate(0, -params[1])
+        quantum_state_ans = QuantumState(1)
+        qulacs_circuit_ans.update_quantum_state(quantum_state_ans)
+        qulacs_result_ans = quantum_state_ans.get_vector()
+
+        self.assertTrue(np.linalg.norm(qulacs_result - qulacs_result_ans) < _EPS)
