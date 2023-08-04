@@ -2,6 +2,7 @@
 import itertools
 from typing import Iterable, List, Optional, Dict, Union, Tuple, Callable
 import numpy as np
+from scipy.sparse import csc_matrix
 
 from qulacs import (
     Observable,
@@ -23,8 +24,8 @@ _EPS = 1e-10  # global variable used to chop very small numbers to zero
 
 qulacs_ops = set(dir(qulacs_gate))
 
-# TODO: Add more gates
-QISKIT_OPERATION_MAP_SELF_ADJOINT = {
+# TODO: Add more gates maybe
+QISKIT_OPERATION_MAP = {
     # native PennyLane operations also native to qiskit
     "X": ex.XGate,
     "Y": ex.YGate,
@@ -39,8 +40,8 @@ QISKIT_OPERATION_MAP_SELF_ADJOINT = {
     "RZ": ex.RZGate,
     "Identity": ex.IGate,
     "TOFFOLI": ex.CCXGate,
-    "U1": ex.U1Gate,
-    "U2": ex.U2Gate,
+    "U1": ex.U1Gate,  # deprecated in qiskit use p gate
+    "U2": ex.U2Gate,  # deprecated in qiskit use u gate
     "U3": ex.U3Gate,
     "S": ex.SGate,
     "Sdag": ex.SdgGate,
@@ -51,14 +52,8 @@ QISKIT_OPERATION_MAP_SELF_ADJOINT = {
     "DenseMatrix": ex.UnitaryGate,
 }
 
-QISKIT_OPERATION_MAP_PARAMETRIC = {
-    "ParametricRX": ex.RXGate,
-    "ParametricRY": ex.RYGate,
-    "ParametricRZ": ex.RZGate,
-}
-
 QISKIT_GATE_TO_QULACS_GATE_MAPPING = {
-    # native PennyLane operations also native to qiskit
+    # native qulacs operations also native to qiskit
     "X": ex.XGate(),
     "Y": ex.YGate(),
     "Z": ex.ZGate(),
@@ -83,8 +78,10 @@ QISKIT_GATE_TO_QULACS_GATE_MAPPING = {
     "sqrtXdag": ex.SXdgGate(),
 }
 
-QISKIT_OPERATION_MAP = {
-    **QISKIT_OPERATION_MAP_SELF_ADJOINT,
+QISKIT_OPERATION_MAP_PARAMETRIC = {
+    "ParametricRX": ex.RXGate,
+    "ParametricRY": ex.RYGate,
+    "ParametricRZ": ex.RZGate,
 }
 
 inv_map = {v.__name__: k for k, v in QISKIT_OPERATION_MAP.items()}
@@ -107,11 +104,9 @@ def local_simulator_to_target() -> Target:
 
     target = Target()
 
-    instructions = [
-        inst for inst in QISKIT_GATE_TO_QULACS_GATE_MAPPING.values() if inst is not None
-    ]
+    instructions = [inst for inst in QISKIT_GATE_TO_QULACS_GATE_MAPPING.values()]
 
-    num_qubits = 26
+    num_qubits = 30
 
     target.add_instruction(Measure(), {(i,): None for i in range(num_qubits)})
 
@@ -190,12 +185,10 @@ def circuit_mapper(qcirc: QuantumCircuit):
         {gate.name for gate, _, _ in qcirc.data}.issubset(translatable_qiskit_gates)
     ):
         qcirc = transpile(qcirc, basis_gates=translatable_qiskit_gates)
-        print("Transpiled circuit")
-    if qcirc.global_phase > _EPS:
-        warnings.warn("Circuit transpilation resulted in global phase shift")
 
     var_ref_map = _extract_variable_refs(qcirc.parameters, range(qcirc.num_parameters))
-
+    # print(var_ref_map)
+    # print(qcirc.parameters)
     gate_list = []
     wire_list = []
     param_idx_list = []
@@ -209,64 +202,67 @@ def circuit_mapper(qcirc: QuantumCircuit):
         operation_wires = [wire_map[hash(qubit)] for qubit in qargs]
         operation_name = None
 
-        if instruction_name in inv_map and inv_map[instruction_name] in qulacs_ops:
-            pl_parameters_idx: List[List[int]] = []
-            pl_parameters_value = []
+        # print(op)
+        # print("operation", instruction_name)
 
-            for p in op.params:
-                if isinstance(p, ParameterExpression):
-                    if p.parameters:
-                        ordered_params = tuple(p.parameters)
-                        f_args = []
-                        for i_ordered_params in ordered_params:
-                            f_args.append(var_ref_map.get(i_ordered_params))
-                        pl_parameters_idx.append(*f_args)
-                        if instruction_name not in [
-                            "RXGate",
-                            "RYGate",
-                            "RZGate",
-                        ]:
-                            raise ValueError(
-                                "RX, RY, RZ Parametric gates are supported",
-                                "for now.",
-                            )
-                        operation_name = inv_parametric_map[instruction_name]
-                    else:
-                        pl_parameters_value.append(float(p))
+        # if instruction_name in inv_map and inv_map[instruction_name] in qulacs_ops:
+        pl_parameters_idx: List[List[int]] = []
+        pl_parameters_value = []
+
+        for p in op.params:
+            if isinstance(p, ParameterExpression):
+                if p.parameters:
+                    ordered_params = tuple(p.parameters)
+                    f_args = []
+                    for i_ordered_params in ordered_params:
+                        f_args.append(var_ref_map.get(i_ordered_params))
+                    pl_parameters_idx.append(*f_args)
+                    if instruction_name not in [
+                        "RXGate",
+                        "RYGate",
+                        "RZGate",
+                    ]:
+                        raise ValueError(
+                            "RX, RY, RZ Parametric gates are supported",
+                            "for now.",
+                        )
+                    operation_name = inv_parametric_map[instruction_name]
                 else:
                     pl_parameters_value.append(float(p))
+            else:
+                pl_parameters_value.append(float(p))
 
-            if operation_name is None:
-                operation_name = inv_map[instruction_name]
+        if operation_name is None:
+            operation_name = inv_map[instruction_name]
 
-            parameters_idx = pl_parameters_idx
-            parameters_value = pl_parameters_value
-            wires = operation_wires
-            operation = getattr(qulacs_gate, operation_name)
-            gate_list.append(operation)
-            wire_list.append(wires)
-            param_idx_list.append(parameters_idx)
-            param_value_list.append(parameters_value)
+        parameters_idx = pl_parameters_idx
+        parameters_value = pl_parameters_value
+        wires = operation_wires
+        operation = getattr(qulacs_gate, operation_name)
+        gate_list.append(operation)
+        wire_list.append(wires)
+        param_idx_list.append(parameters_idx)
+        param_value_list.append(parameters_value)
 
-        else:
-            try:
-                operation_matrix = op.to_matrix()
-                operation_name = inv_map[ex.UnitaryGate]
-                parameters_idx = []
-                parameters_value = operation_matrix
-                wires = operation_wires
+        # else:
+        #     try:
+        #         operation_matrix = op.to_matrix()
+        #         operation_name = inv_map[ex.UnitaryGate]
+        #         parameters_idx = []
+        #         parameters_value = operation_matrix
+        #         wires = operation_wires
 
-                operation = getattr(qulacs_gate, operation_name)
+        #         operation = getattr(qulacs_gate, operation_name)
 
-                gate_list.append(operation)
-                wire_list.append(wires)
-                param_idx_list.append(parameters_idx)
-                param_value_list.append(parameters_value)
+        #         gate_list.append(operation)
+        #         wire_list.append(wires)
+        #         param_idx_list.append(parameters_idx)
+        #         param_value_list.append(parameters_value)
 
-            except BaseException as exception:
-                print(exception)
+        #     except BaseException as exception:
+        #         print(exception)
 
-    return gate_list, wire_list, param_idx_list, param_value_list
+    return gate_list, wire_list, param_idx_list, param_value_list, qcirc.global_phase
 
 
 def convert_qiskit_to_qulacs_circuit(
@@ -286,8 +282,15 @@ def convert_qiskit_to_qulacs_circuit(
       containing two elements:
     """
 
-    gate_list, wire_list, param_idx_list, param_value_list = circuit_mapper(circuit)
+    gate_list, wire_list, param_idx_list, param_value_list, gphase = circuit_mapper(
+        circuit
+    )
     n_qubits = circuit.num_qubits
+
+    # print("Gate List: ", gate_list)
+    # print("Wire List: ", wire_list)
+    # print("Param Idx List: ", param_idx_list)
+    # print("Param Value List: ", param_value_list)
 
     def circuit_builder(params: np.ndarray = None):
         circuit = ParametricQuantumCircuit(n_qubits)
@@ -295,10 +298,15 @@ def convert_qiskit_to_qulacs_circuit(
         for gate, wires, param_idx, param_value in zip(
             gate_list, wire_list, param_idx_list, param_value_list
         ):
+            # Gates that need negative params
+            # Rx, Ry, Rz
+            # Change if-else
+
             if param_idx:
                 if gate in [U1, U2, U3]:
                     parameters = params[param_idx]
                 else:
+                    # print("Negating parameters")
                     parameters = np.negative(params[param_idx])
                     circuit.add_parametric_gate(gate(*wires, *parameters))
             else:
@@ -307,6 +315,17 @@ def convert_qiskit_to_qulacs_circuit(
                 else:
                     parameters = np.negative(param_value)
                 circuit.add_gate(gate(*wires, *parameters))
+
+        if gphase > _EPS:
+            gphase_mat = csc_matrix((2**n_qubits, 2**n_qubits), dtype=complex)
+
+            # set the diagonal to be the global phase
+            gphase_mat.setdiag(np.exp(1j * gphase))
+
+            # add the gphase_mat to the circuit
+            circuit.add_gate(
+                qulacs_gate.SparseMatrix(np.arange(0, n_qubits, 1), gphase_mat)
+            )
 
         return circuit
 
