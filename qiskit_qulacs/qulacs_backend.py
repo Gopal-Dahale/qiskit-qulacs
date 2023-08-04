@@ -38,9 +38,7 @@ class QulacsBackend(Backend):
 
     @property
     def meas_map(self) -> List[List[int]]:
-        raise NotImplementedError(
-            f"Measurement map is not supported by {self.name}."
-        )
+        raise NotImplementedError(f"Measurement map is not supported by {self.name}.")
 
     def qubit_properties(
         self, qubit: Union[int, List[int]]
@@ -48,24 +46,16 @@ class QulacsBackend(Backend):
         raise NotImplementedError
 
     def drive_channel(self, qubit: int):
-        raise NotImplementedError(
-            f"Drive channel is not supported by {self.name}."
-        )
+        raise NotImplementedError(f"Drive channel is not supported by {self.name}.")
 
     def measure_channel(self, qubit: int):
-        raise NotImplementedError(
-            f"Measure channel is not supported by {self.name}."
-        )
+        raise NotImplementedError(f"Measure channel is not supported by {self.name}.")
 
     def acquire_channel(self, qubit: int):
-        raise NotImplementedError(
-            f"Acquire channel is not supported by {self.name}."
-        )
+        raise NotImplementedError(f"Acquire channel is not supported by {self.name}.")
 
     def control_channel(self, qubits: Iterable[int]):
-        raise NotImplementedError(
-            f"Control channel is not supported by {self.name}."
-        )
+        raise NotImplementedError(f"Control channel is not supported by {self.name}.")
 
     def run(
         self,
@@ -73,17 +63,12 @@ class QulacsBackend(Backend):
         **options,
     ) -> QulacsJob:
         convert_input = (
-            [run_input]
-            if isinstance(run_input, QuantumCircuit)
-            else list(run_input)
+            [run_input] if isinstance(run_input, QuantumCircuit) else list(run_input)
         )
         circuits: List[Circuit] = list(qiskit_to_qulacs(convert_input))
         try:
             tasks = zip(
-                [
-                    QuantumState(circuit.get_qubit_count())
-                    for circuit in circuits
-                ],
+                [QuantumState(circuit.get_qubit_count()) for circuit in circuits],
                 circuits,
             )
         except Exception as ex:

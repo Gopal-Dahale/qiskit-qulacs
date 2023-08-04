@@ -16,8 +16,6 @@ class QulacsProvider(Provider):
         backends = [QulacsBackend()]
 
         if name:
-            backends = [
-                backend for backend in backends if backend.name == name
-            ]
+            backends = [backend for backend in backends if backend.name == name]
 
         return filter_backends(backends, filters=filters, **kwargs)
