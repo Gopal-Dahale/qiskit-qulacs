@@ -91,9 +91,7 @@ class QulacsEstimator(Estimator):
             else:
                 circuit_indices.append(len(self._circuits))
                 self._circuit_ids[key] = len(self._circuits)
-                self._circuits.append(
-                    convert_qiskit_to_qulacs_circuit(circuit)[0]
-                )
+                self._circuits.append(convert_qiskit_to_qulacs_circuit(circuit)[0])
                 self._parameters.append(circuit.parameters)
 
         observable_indices = []
