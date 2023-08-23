@@ -18,6 +18,7 @@ from qiskit.circuit import ParameterExpression, Parameter
 from qiskit.circuit.library import Measure
 from qiskit.transpiler import InstructionProperties, Target
 from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler.passes import RemoveBarriers
 import warnings
 
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
@@ -180,10 +181,13 @@ def circuit_mapper(qcirc: QuantumCircuit):
       contain information about the gates, wires, parameter indices, and
       parameter values extracted from the input `qcirc` QuantumCircuit.
     """
+    gate_names = {gate.name for gate, _, _ in qcirc.data}
 
-    if not (
-        {gate.name for gate, _, _ in qcirc.data}.issubset(translatable_qiskit_gates)
-    ):
+    if "barrier" in gate_names:
+        qcirc = RemoveBarriers()(qcirc)
+        gate_names.remove("barrier")
+
+    if not (gate_names.issubset(translatable_qiskit_gates)):
         qcirc = transpile(qcirc, basis_gates=translatable_qiskit_gates)
 
     var_ref_map = _extract_variable_refs(qcirc.parameters, range(qcirc.num_parameters))
@@ -375,6 +379,6 @@ def convert_sparse_pauliop_to_qulacs_obs(sparse_pauliop: SparsePauliOp):
         for qubit, pauli in enumerate(term):
             pauli_string += f"{pauli} {qubit} "
 
-        qulacs_observable.add_operator(PauliOperator(pauli_string, coefficient))
+        qulacs_observable.add_operator(PauliOperator(pauli_string, coefficient.real))
 
     return qulacs_observable
