@@ -14,5 +14,5 @@ reno>=3.5.0
 # the ~= specifier for it.
 black[jupyter]~=22.1
 ddt>=1.2.0,!=1.4.0,!=1.4.3
-myst_parser>=2.0.0
+myst_parser>=1.0.0
 qiskit-sphinx-theme >=1.14.0
