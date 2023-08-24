@@ -1,30 +1,27 @@
 """QulacsEstimator class."""
 from __future__ import annotations
 
+import typing
 from collections.abc import Sequence
 from typing import Any
-import typing
 
 import numpy as np
-
 from qiskit.circuit import QuantumCircuit
 from qiskit.exceptions import QiskitError
-from qiskit.quantum_info.operators.base_operator import BaseOperator
-
-from qiskit.primitives.base import EstimatorResult
 from qiskit.primitives import Estimator
+from qiskit.primitives.base import EstimatorResult
 from qiskit.primitives.primitive_job import PrimitiveJob
-from qiskit.primitives.utils import (
-    _circuit_key,
-    _observable_key,
-    init_observable,
-)
+from qiskit.primitives.utils import _circuit_key, _observable_key, init_observable
+from qiskit.quantum_info.operators.base_operator import BaseOperator
 from qulacs import QuantumState
-from qiskit_qulacs.adapter import convert_qiskit_to_qulacs_circuit
-from qiskit_qulacs.adapter import convert_sparse_pauliop_to_qulacs_obs
+
+from qiskit_qulacs.adapter import (
+    convert_qiskit_to_qulacs_circuit,
+    convert_sparse_pauliop_to_qulacs_obs,
+)
 
 if typing.TYPE_CHECKING:
-    from qiskit.opflow import PauliSumOp
+    from qiskit.quantum_info import SparsePauliOp
 
 
 class QulacsEstimator(Estimator):
@@ -49,7 +46,6 @@ class QulacsEstimator(Estimator):
         parameter_values: Sequence[Sequence[float]],
         **run_options,
     ) -> EstimatorResult:
-
         # Initialize metadata
         metadata: list[dict[str, Any]] = [{} for _ in range(len(circuits))]
 
@@ -77,11 +73,10 @@ class QulacsEstimator(Estimator):
     def _run(
         self,
         circuits: tuple[QuantumCircuit, ...],
-        observables: tuple[BaseOperator | PauliSumOp, ...],
+        observables: tuple[BaseOperator | SparsePauliOp, ...],
         parameter_values: tuple[tuple[float, ...], ...],
         **run_options,
     ):
-
         circuit_indices = []
         for circuit in circuits:
             key = _circuit_key(circuit)

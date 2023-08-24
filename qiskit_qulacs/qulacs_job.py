@@ -7,7 +7,6 @@ from qiskit.result.models import ExperimentResult, ExperimentResultData
 
 
 def _get_result(tasks):
-
     expt_results = []
     for qulacs_state, circuit in tasks:
         circuit.update_quantum_state(qulacs_state)
@@ -30,9 +29,7 @@ def _get_result(tasks):
 class QulacsJob(JobV1):
     """Qulacs Job"""
 
-    def __init__(
-        self, task_id, tasks, backend, **metadata: Optional[dict]
-    ) -> None:
+    def __init__(self, task_id, tasks, backend, **metadata: Optional[dict]) -> None:
         super().__init__(backend=backend, job_id=task_id, metadata=metadata)
         self._task_id = task_id
         self._backend = backend

@@ -1,12 +1,14 @@
 """QulacsBackend class."""
-from typing import Iterable, Union, List
+from typing import Iterable, List, Union
 
-from qiskit.providers import BackendV2 as Backend, Options, QubitProperties
 from qiskit import QuantumCircuit
-from qulacs import QuantumCircuit as Circuit, QuantumState
+from qiskit.providers import BackendV2 as Backend
+from qiskit.providers import Options, QubitProperties
+from qulacs import QuantumCircuit as Circuit
+from qulacs import QuantumState
 
+from .adapter import local_simulator_to_target, qiskit_to_qulacs
 from .qulacs_job import QulacsJob
-from .adapter import qiskit_to_qulacs, local_simulator_to_target
 
 
 class QulacsBackend(Backend):

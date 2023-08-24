@@ -5,6 +5,9 @@ __pycache__
 venv/
 .idea/
 .vscode/
+.mypy_cache/
+bin/
+install.sh
 
 # Distribution / packaging
 .Python
@@ -47,7 +50,7 @@ coverage.xml
 
 # virtualenv
 ENV/
-qislacs
+qislacs/
 
 # Sphinx documentation
 docs/_build/

@@ -1,12 +1,14 @@
-import unittest
-from unittest import TestCase
+"""Tests for qulacs backend."""
+
 from typing import Dict, List
-from qiskit_qulacs.qulacs_backend import QulacsBackend
-from qiskit.transpiler import Target
-from qiskit import QuantumCircuit, BasicAer, transpile
-from qiskit.circuit.random import random_circuit
+from unittest import TestCase
+
 import numpy as np
-from qiskit.quantum_info import SparsePauliOp
+from qiskit import BasicAer, QuantumCircuit, transpile
+from qiskit.circuit.random import random_circuit
+from qiskit.transpiler import Target
+
+from qiskit_qulacs.qulacs_backend import QulacsBackend
 
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
 

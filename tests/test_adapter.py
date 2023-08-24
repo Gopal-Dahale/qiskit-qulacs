@@ -1,18 +1,16 @@
+"""Tests for the Adapter class."""
 from unittest import TestCase
-import pytest
-from qiskit_qulacs.adapter import convert_qiskit_to_qulacs_circuit
-from qiskit_qulacs.qulacs_backend import QulacsBackend
-from qulacs import QuantumState, ParametricQuantumCircuit
+
 import numpy as np
-from qiskit import QuantumCircuit, BasicAer, execute
+from qiskit import BasicAer, QuantumCircuit, execute
 from qiskit import extensions as ex
 from qiskit.circuit import Parameter
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import SparsePauliOp
-from qiskit_qulacs.adapter import (
-    QISKIT_OPERATION_MAP,
-    QISKIT_GATE_TO_QULACS_GATE_MAPPING,
-)
+from qulacs import ParametricQuantumCircuit, QuantumState
+
+from qiskit_qulacs.adapter import convert_qiskit_to_qulacs_circuit
+from qiskit_qulacs.qulacs_backend import QulacsBackend
 
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
 
@@ -49,8 +47,8 @@ qiskit_standard_gates = [
     ex.RYYGate(Parameter("ϴ")),
     ex.RZZGate(Parameter("ϴ")),
     ex.RZXGate(Parameter("ϴ")),
-    ex.XXMinusYYGate(Parameter("ϴ")),
-    ex.XXPlusYYGate(Parameter("ϴ")),
+    ex.XXMinusYYGate(Parameter("ϴ"), Parameter("φ")),
+    ex.XXPlusYYGate(Parameter("ϴ"), Parameter("φ")),
     ex.ECRGate(),
     ex.SGate(),
     ex.SdgGate(),
@@ -147,25 +145,15 @@ class TestAdapter(TestCase):
                 parameter_bindings = dict(zip(parameters, parameter_values))
                 qiskit_circuit = qiskit_circuit.bind_parameters(parameter_bindings)
 
-            if standard_gate.name not in ["cu", "ecr"]:
+            if standard_gate.name not in ["cu"]:
                 # parameters are not binding to cu. I am not sure why.
-                # ecr generates a global phase. Not sure how to handle it.
 
                 with self.subTest(f"Circuit with {standard_gate.name} gate."):
-
-                    print("#" * 100)
-                    print(qiskit_circuit)
-
                     qulacs_job = qulacs_backend.run(qiskit_circuit)
                     qulacs_result = qulacs_job.result().get_statevector()
 
                     qiskit_job = execute(qiskit_circuit, aer_backend)
                     qiskit_result = qiskit_job.result().get_statevector()
-
-                    print(standard_gate.name)
-                    print("Qulacs Result:", qulacs_result)
-                    print("Qiskit Result:", qiskit_result)
-                    print("-" * 100)
 
                     self.assertTrue(
                         np.linalg.norm(qulacs_result - qiskit_result) < _EPS
@@ -181,7 +169,6 @@ class TestAdapter(TestCase):
         evo = PauliEvolutionGate(hamiltonian, time=2)
 
         qiskit_circuit.append(evo, range(2))
-        print(qiskit_circuit)
 
         qulacs_job = qulacs_backend.run(qiskit_circuit)
         qulacs_result = qulacs_job.result().get_statevector()
