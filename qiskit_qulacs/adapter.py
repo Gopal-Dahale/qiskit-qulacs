@@ -1,25 +1,20 @@
 """Util functions for provider"""
 import itertools
-from typing import Iterable, List, Optional, Dict, Union, Tuple, Callable
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+
 import numpy as np
-from scipy.sparse import csc_matrix
-
-from qulacs import (
-    Observable,
-    PauliOperator,
-)
-from qulacs import ParametricQuantumCircuit
 import qulacs.gate as qulacs_gate
-from qulacs.gate import U1, U2, U3
-
-from qiskit import QuantumCircuit, transpile
+from qiskit import QuantumCircuit
 from qiskit import extensions as ex
-from qiskit.circuit import ParameterExpression, Parameter
+from qiskit import transpile
+from qiskit.circuit import Parameter, ParameterExpression
 from qiskit.circuit.library import Measure
-from qiskit.transpiler import InstructionProperties, Target
 from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import InstructionProperties, Target
 from qiskit.transpiler.passes import RemoveBarriers
-import warnings
+from qulacs import Observable, ParametricQuantumCircuit, PauliOperator
+from qulacs.gate import U1, U2, U3
+from scipy.sparse import csc_matrix
 
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
 
@@ -105,7 +100,7 @@ def local_simulator_to_target() -> Target:
 
     target = Target()
 
-    instructions = [inst for inst in QISKIT_GATE_TO_QULACS_GATE_MAPPING.values()]
+    instructions = list(QISKIT_GATE_TO_QULACS_GATE_MAPPING.values())
 
     num_qubits = 30
 
@@ -187,12 +182,11 @@ def circuit_mapper(qcirc: QuantumCircuit):
         qcirc = RemoveBarriers()(qcirc)
         gate_names.remove("barrier")
 
-    if not (gate_names.issubset(translatable_qiskit_gates)):
+    if not gate_names.issubset(translatable_qiskit_gates):
         qcirc = transpile(qcirc, basis_gates=translatable_qiskit_gates)
 
     var_ref_map = _extract_variable_refs(qcirc.parameters, range(qcirc.num_parameters))
-    # print(var_ref_map)
-    # print(qcirc.parameters)
+
     gate_list = []
     wire_list = []
     param_idx_list = []
@@ -206,10 +200,6 @@ def circuit_mapper(qcirc: QuantumCircuit):
         operation_wires = [wire_map[hash(qubit)] for qubit in qargs]
         operation_name = None
 
-        # print(op)
-        # print("operation", instruction_name)
-
-        # if instruction_name in inv_map and inv_map[instruction_name] in qulacs_ops:
         pl_parameters_idx: List[List[int]] = []
         pl_parameters_value = []
 
@@ -248,24 +238,6 @@ def circuit_mapper(qcirc: QuantumCircuit):
         param_idx_list.append(parameters_idx)
         param_value_list.append(parameters_value)
 
-        # else:
-        #     try:
-        #         operation_matrix = op.to_matrix()
-        #         operation_name = inv_map[ex.UnitaryGate]
-        #         parameters_idx = []
-        #         parameters_value = operation_matrix
-        #         wires = operation_wires
-
-        #         operation = getattr(qulacs_gate, operation_name)
-
-        #         gate_list.append(operation)
-        #         wire_list.append(wires)
-        #         param_idx_list.append(parameters_idx)
-        #         param_value_list.append(parameters_value)
-
-        #     except BaseException as exception:
-        #         print(exception)
-
     return gate_list, wire_list, param_idx_list, param_value_list, qcirc.global_phase
 
 
@@ -290,11 +262,6 @@ def convert_qiskit_to_qulacs_circuit(
         circuit
     )
     n_qubits = circuit.num_qubits
-
-    # print("Gate List: ", gate_list)
-    # print("Wire List: ", wire_list)
-    # print("Param Idx List: ", param_idx_list)
-    # print("Param Value List: ", param_value_list)
 
     def circuit_builder(params: np.ndarray = None):
         circuit = ParametricQuantumCircuit(n_qubits)
@@ -328,7 +295,9 @@ def convert_qiskit_to_qulacs_circuit(
 
             # add the gphase_mat to the circuit
             circuit.add_gate(
-                qulacs_gate.SparseMatrix(np.arange(0, n_qubits, 1), gphase_mat)
+                qulacs_gate.SparseMatrix(  # pylint: disable=no-member
+                    list(np.arange(0, n_qubits, 1)), gphase_mat
+                )
             )
 
         return circuit
