@@ -11,7 +11,7 @@
 
 Qiskit-Qulacs allows users to execute Qiskit programs using Qulacs backend.
 
-**Qiskit-Qulacs is actively being developed, and we welcome your input and suggestions on the API and use cases. If you have any ideas or feedback, please feel free to open a GitHub issue or contact us. We are interested in hearing about your experiences using the library.**
+**Qiskit-Qulacs is actively being developed, and we welcome your input and suggestions on the API and use cases. If you have any ideas or feedback, please open a GitHub issue or contact us. We are interested in hearing about your experiences using the library.**
 
 
 1.  [About](docs/intro/project_overview.md)
@@ -43,7 +43,7 @@ We encourage your feedback! You can share your thoughts with us by:
 
 ### Contribution Guidelines
 
-For information on how to contribute to this project, please take a look at our [contribution guidelines](CONTRIBUTING.md).
+For information on contributing to this project, please take a look at our [contribution guidelines](CONTRIBUTING.md).
 
 
 ----------------------------------------------------------------------------------------------------
@@ -53,6 +53,9 @@ For information on how to contribute to this project, please take a look at our 
 [2] Qiskit-terra https://github.com/Qiskit/qiskit-terra \
 [3] Qulacs https://github.com/qulacs/qulacs
 
+We are proud to be supported by the [Unitary Fund microgrant program](https://unitary.fund/grants/). Thank you Unitary Fund.
+
+[![Unitary Fund](https://img.shields.io/badge/Supported%20By-UNITARY%20FUND-brightgreen.svg?style=for-the-badge)](https://unitary.fund)
 
 ----------------------------------------------------------------------------------------------------
 
