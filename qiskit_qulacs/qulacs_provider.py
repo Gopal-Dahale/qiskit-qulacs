@@ -8,14 +8,19 @@ from .qulacs_backend import QulacsBackend
 class QulacsProvider(Provider):
     """QulacsProvider class."""
 
-    def __init__(self, token=None):
-        super().__init__()
-        self.token = token
+    @staticmethod
+    def _get_backends():
+        return [("qulacs_simulator", QulacsBackend)]
+
+    def get_backend(self, name=None, **kwargs):
+        return super().get_backend(name=name, **kwargs)
 
     def backends(self, name=None, filters=None, **kwargs):
-        backends = [QulacsBackend()]
-
-        if name:
-            backends = [backend for backend in backends if backend.name == name]
-
+        backends = []
+        for backend_name, backend_cls in self._get_backends():
+            if name is None or backend_name == name:
+                backends.append(backend_cls(provider=self))
         return filter_backends(backends, filters=filters, **kwargs)
+
+    def __str__(self):
+        return "QulacsProvider"
