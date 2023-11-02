@@ -1,22 +1,29 @@
 """Util functions for provider"""
 import itertools
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+from math import log2
+from typing import Callable, Dict, Iterable, List, Tuple
 
 import numpy as np
-import qulacs.gate as qulacs_gate
 from qiskit import QuantumCircuit
 from qiskit import extensions as ex
 from qiskit import transpile
 from qiskit.circuit import Parameter, ParameterExpression
-from qiskit.circuit.library import Measure
 from qiskit.quantum_info import SparsePauliOp
-from qiskit.transpiler import InstructionProperties, Target
 from qiskit.transpiler.passes import RemoveBarriers
-from qulacs import Observable, ParametricQuantumCircuit, PauliOperator
-from qulacs.gate import U1, U2, U3
+from qiskit.utils import local_hardware_info
 from scipy.sparse import csc_matrix
 
+import qulacs.gate as qulacs_gate
+from qulacs import Observable, ParametricQuantumCircuit, PauliOperator
+from qulacs.gate import U1, U2, U3
+
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
+
+# Available system memory
+SYSTEM_MEMORY_GB = local_hardware_info()["memory"]
+
+# Max number of qubits
+MAX_QUBITS = int(log2(SYSTEM_MEMORY_GB * (1024**3) / 16))
 
 qulacs_ops = set(dir(qulacs_gate))
 
@@ -88,46 +95,6 @@ translatable_qiskit_gates = set(
 )
 
 
-def local_simulator_to_target() -> Target:
-    """
-    The function `local_simulator_to_target` creates a target object and adds
-    instructions to it based on a mapping between Qiskit gates and Qulacs
-    gates.
-
-    Returns:
-      an instance of the `Target` class.
-    """
-
-    target = Target()
-
-    instructions = list(QISKIT_GATE_TO_QULACS_GATE_MAPPING.values())
-
-    num_qubits = 30
-
-    target.add_instruction(Measure(), {(i,): None for i in range(num_qubits)})
-
-    for instruction in instructions:
-        instruction_props: Optional[
-            Dict[
-                Union[Tuple[int], Tuple[int, int]],
-                Optional[InstructionProperties],
-            ]
-        ] = {}
-
-        if instruction.num_qubits == 1:
-            for i in range(num_qubits):
-                instruction_props[(i,)] = None
-            target.add_instruction(instruction, instruction_props)
-        elif instruction.num_qubits == 2:
-            for src in range(num_qubits):
-                for dst in range(num_qubits):
-                    if src != dst:
-                        instruction_props[(src, dst)] = None
-                        instruction_props[(dst, src)] = None
-            target.add_instruction(instruction, instruction_props)
-    return target
-
-
 def _extract_variable_refs(parameters, values):
     """
     The function `_extract_variable_refs` takes two lists, `parameters` and
@@ -197,6 +164,7 @@ def circuit_mapper(qcirc: QuantumCircuit):
 
     for op, qargs, _ in qcirc.data:
         instruction_name = op.__class__.__name__
+
         operation_wires = [wire_map[hash(qubit)] for qubit in qargs]
         operation_name = None
 
