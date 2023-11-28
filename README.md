@@ -7,7 +7,6 @@
 [![Tests](https://github.com/Gopal-Dahale/qiskit-qulacs/actions/workflows/test_latest_versions.yml/badge.svg)](https://github.com/Gopal-Dahale/qiskit-qulacs/actions/workflows/test_latest_versions.yml) 
 [![Coverage Status](https://coveralls.io/repos/github/Gopal-Dahale/qiskit-qulacs/badge.svg?branch=main)](https://coveralls.io/github/Gopal-Dahale/qiskit-qulacs?branch=main)
 
-![Qiskit-Qulacs](docs/_static/images/logo_extended.png)
 ![Qiskit-Qulacs-logo-extended](https://github.com/Gopal-Dahale/qiskit-qulacs/assets/49199003/27116cba-4109-4298-baac-0a35d04c5ab5)
 
 Qiskit-Qulacs allows users to execute Qiskit programs using Qulacs backend.
