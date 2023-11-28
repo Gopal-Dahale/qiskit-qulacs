@@ -12,6 +12,14 @@ qiskit\_qulacs.adapter module
    :undoc-members:
    :show-inheritance:
 
+qiskit\_qulacs.backend\_utils module
+------------------------------------
+
+.. automodule:: qiskit_qulacs.backend_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qiskit\_qulacs.qulacs\_backend module
 -------------------------------------
 

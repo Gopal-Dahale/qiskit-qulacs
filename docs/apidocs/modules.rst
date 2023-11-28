@@ -2,6 +2,6 @@ qiskit_qulacs
 =============
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    qiskit_qulacs

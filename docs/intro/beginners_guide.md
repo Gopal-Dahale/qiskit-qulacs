@@ -45,7 +45,7 @@ qc.h(0)
 qc.cx(0, 1)
 
 # Use Qiskit-Qulacs to run the circuit
-backend = QulacsProvider().get_backend('statevector_simulator')
+backend = QulacsProvider().get_backend('qulacs_simulator')
 result = backend.run(qc).result()
 
 # Get the statevector
