@@ -11,7 +11,7 @@
         "pytest"
     ],
     "styles_check_command": [
-        "pylint -rn prototype_template tests"
+        "pylint -rn qiskit_qulacs tests"
     ],
     "coverages_check_command": [
         "coverage3 run -m pytest",

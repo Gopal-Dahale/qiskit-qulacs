@@ -155,7 +155,7 @@ class QulacsBackend(Backend):
         if isinstance(run_input, QuantumCircuit):
             run_input = [run_input]
 
-        run_input: List[Circuit] = list(qiskit_to_qulacs(run_input))
+        run_input = list(qiskit_to_qulacs(run_input))
         config = generate_config(self.options, run_options)
 
         class_name = f'QuantumState{"Gpu" if config.device == "GPU" else ""}'
@@ -171,7 +171,7 @@ class QulacsBackend(Backend):
                     self.qc_opt.optimize(circuit, config.qco_max_block_size)
 
         # Use GPU if available
-        if config.device not in self._AVAILABLE_DEVICES:
+        if config.device not in self.available_devices():
             if config.device == "GPU":
                 raise ValueError("GPU support not installed. Install qulacs-gpu.")
             raise ValueError(f"Device {config.device} not found.")

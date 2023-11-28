@@ -30,7 +30,7 @@ setuptools.setup(
     keywords="qiskit qulacs quantum",
     packages=setuptools.find_packages(),
     install_requires=install_requires,
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     version=version,
     classifiers=[
         "Intended Audience :: Developers",
