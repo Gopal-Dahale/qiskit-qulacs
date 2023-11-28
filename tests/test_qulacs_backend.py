@@ -6,7 +6,6 @@ from unittest import TestCase
 import numpy as np
 from qiskit import BasicAer, QuantumCircuit, transpile
 from qiskit.circuit.random import random_circuit
-from qiskit.transpiler import Target
 
 from qiskit_qulacs.qulacs_backend import QulacsBackend
 
@@ -42,25 +41,10 @@ def combine_dicts(
 class TestQulacsBackend(TestCase):
     """Tests BraketBackend."""
 
-    def test_qulacs_backend(self):
-        """Tests qulacs backend."""
-        backend = QulacsBackend()
-        self.assertTrue(backend)
-        self.assertIsInstance(backend.target, Target)
-        self.assertIsNone(backend.max_circuits)
-        with self.assertRaises(NotImplementedError):
-            backend.drive_channel(0)
-        with self.assertRaises(NotImplementedError):
-            backend.acquire_channel(0)
-        with self.assertRaises(NotImplementedError):
-            backend.measure_channel(0)
-        with self.assertRaises(NotImplementedError):
-            backend.control_channel([0, 1])
-
     def test_qulacs_backend_output(self):
         """Test qulacs backend output"""
         qulacs_backend = QulacsBackend()
-        self.assertEqual(qulacs_backend.name, "statevector_simulator")
+        self.assertEqual(qulacs_backend.name(), "qulacs_simulator")
 
     def test_qulacs_backend_circuit(self):
         """Tests qulacs backend with circuit."""

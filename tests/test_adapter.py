@@ -5,12 +5,12 @@ import numpy as np
 from qiskit import BasicAer, QuantumCircuit, execute
 from qiskit import extensions as ex
 from qiskit.circuit import Parameter
-from qiskit.circuit.library import PauliEvolutionGate
+from qiskit.circuit.library import PauliEvolutionGate, TwoLocal
 from qiskit.quantum_info import SparsePauliOp
-from qulacs import ParametricQuantumCircuit, QuantumState
 
-from qiskit_qulacs.adapter import convert_qiskit_to_qulacs_circuit
+from qiskit_qulacs.adapter import circuit_mapper, convert_qiskit_to_qulacs_circuit
 from qiskit_qulacs.qulacs_backend import QulacsBackend
+from qulacs import ParametricQuantumCircuit, QuantumState
 
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
 
