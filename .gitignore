@@ -8,6 +8,7 @@ venv/
 .mypy_cache/
 bin/
 install.sh
+qulacs/
 
 # Distribution / packaging
 .Python
