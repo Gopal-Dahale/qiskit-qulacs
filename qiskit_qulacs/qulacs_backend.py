@@ -1,88 +1,193 @@
 """QulacsBackend class."""
-from typing import Iterable, List, Union
+import copy
+import time
+import uuid
+from collections import Counter
+from typing import List, Union
 
 from qiskit import QuantumCircuit
-from qiskit.providers import BackendV2 as Backend
-from qiskit.providers import Options, QubitProperties
-from qulacs import QuantumCircuit as Circuit
-from qulacs import QuantumState
+from qiskit.providers import BackendV1 as Backend
+from qiskit.providers import JobStatus, Options
+from qiskit.providers.models import QasmBackendConfiguration
+from qiskit.result import Result
+from qiskit.result.models import ExperimentResult, ExperimentResultData
 
-from .adapter import local_simulator_to_target, qiskit_to_qulacs
+import qulacs
+from qulacs import QuantumCircuit as Circuit
+from qulacs.circuit import QuantumCircuitOptimizer
+
+from .adapter import MAX_QUBITS, qiskit_to_qulacs
+from .backend_utils import BASIS_GATES, available_devices, generate_config
 from .qulacs_job import QulacsJob
+from .version import __version__
 
 
 class QulacsBackend(Backend):
     """QulacsBackend class."""
 
-    def __init__(self):
-        super().__init__()
-        self.name = "statevector_simulator"
-        self._target = local_simulator_to_target()
+    _BASIS_GATES = BASIS_GATES
 
-    @property
-    def target(self):
-        return self._target
+    _DEFAULT_CONFIGURATION = {
+        "backend_name": "qulacs_simulator",
+        "backend_version": __version__,
+        "n_qubits": MAX_QUBITS,
+        "url": "https://github.com/Gopal-Dahale/qiskit-qulacs",
+        "simulator": True,
+        "local": True,
+        "conditional": True,
+        "open_pulse": False,
+        "memory": True,
+        "max_shots": int(1e6),
+        "description": "A Qulacs fast quantum circuit simulator",
+        "coupling_map": None,
+        "basis_gates": _BASIS_GATES,
+        "gates": [],
+    }
 
-    @property
-    def max_circuits(self):
-        return None
+    _SIMULATION_DEVICES = ("CPU", "GPU")
+
+    _AVAILABLE_DEVICES = None
+
+    def __init__(
+        self, configuration=None, properties=None, provider=None, **backend_options
+    ):
+        # Update available devices for class
+        if QulacsBackend._AVAILABLE_DEVICES is None:
+            QulacsBackend._AVAILABLE_DEVICES = available_devices(
+                QulacsBackend._SIMULATION_DEVICES
+            )
+
+        # Default configuration
+        if configuration is None:
+            configuration = QasmBackendConfiguration.from_dict(
+                QulacsBackend._DEFAULT_CONFIGURATION
+            )
+
+        super().__init__(
+            configuration,
+            provider=provider,
+        )
+
+        # Initialize backend properties
+        self._properties = properties
+
+        # Set options from backend_options dictionary
+        if backend_options is not None:
+            self.set_options(**backend_options)
+
+        # Quantum circuit optimizer (if needed)
+        self.qc_opt = QuantumCircuitOptimizer()
 
     @classmethod
     def _default_options(cls):
-        return Options()
-
-    @property
-    def dtm(self) -> float:
-        raise NotImplementedError(
-            "System time resolution of output signals",
-            f"is not supported by {self.name}.",
+        return Options(
+            # Global options
+            shots=0,
+            device="CPU",
+            seed_simulator=None,
+            # Quantum Circuit Optimizer options
+            qco_enable=False,
+            qco_method="light",
+            qco_max_block_size=2,
         )
 
-    @property
-    def meas_map(self) -> List[List[int]]:
-        raise NotImplementedError(f"Measurement map is not supported by {self.name}.")
+    def __repr__(self):
+        """String representation of an QulacsBackend."""
+        name = self.__class__.__name__
+        display = f"'{self.name()}'"
+        return f"{name}({display})"
 
-    def qubit_properties(
-        self, qubit: Union[int, List[int]]
-    ) -> Union[QubitProperties, List[QubitProperties]]:
-        raise NotImplementedError
+    def available_devices(self):
+        """Return the available simulation methods."""
+        return copy.copy(self._AVAILABLE_DEVICES)
 
-    def drive_channel(self, qubit: int):
-        raise NotImplementedError(f"Drive channel is not supported by {self.name}.")
+    def _execute_circuits_job(self, circuits, states, run_options, job_id=""):
+        """Run a job"""
 
-    def measure_channel(self, qubit: int):
-        raise NotImplementedError(f"Measure channel is not supported by {self.name}.")
+        shots = run_options.shots
+        seed = run_options.seed_simulator
 
-    def acquire_channel(self, qubit: int):
-        raise NotImplementedError(f"Acquire channel is not supported by {self.name}.")
+        # Start timer
+        start = time.time()
 
-    def control_channel(self, qubits: Iterable[int]):
-        raise NotImplementedError(f"Control channel is not supported by {self.name}.")
+        expt_results = []
+        for state, circuit in zip(states, circuits):
+            circuit.update_quantum_state(state)
+            n = circuit.get_qubit_count()
+
+            if shots:
+                # Sampling
+                samples = state.sampling(shots, seed) if seed else state.sampling(shots)
+                bitstrings = [format(x, f"0{n}b") for x in samples]
+                counts = dict(Counter(bitstrings))
+                data = ExperimentResultData(counts=counts, memory=bitstrings)
+            else:
+                # Statevector
+                data = ExperimentResultData(
+                    statevector=state.get_vector(),
+                )
+
+            expt_results.append(
+                ExperimentResult(
+                    shots=shots,
+                    success=True,
+                    status=JobStatus.DONE,
+                    data=data,
+                )
+            )
+
+        return Result(
+            backend_name=self.name(),
+            backend_version=self.configuration().backend_version,
+            job_id=job_id,
+            qobj_id=0,
+            success=True,
+            results=expt_results,
+            status=JobStatus.DONE,
+            time_taken=time.time() - start,
+        )
 
     def run(
         self,
         run_input: Union[QuantumCircuit, List[QuantumCircuit]],
-        **options,
+        **run_options,
     ) -> QulacsJob:
-        convert_input = (
-            [run_input] if isinstance(run_input, QuantumCircuit) else list(run_input)
+        if isinstance(run_input, QuantumCircuit):
+            run_input = [run_input]
+
+        run_input: List[Circuit] = list(qiskit_to_qulacs(run_input))
+        config = generate_config(self.options, run_options)
+
+        class_name = f'QuantumState{"Gpu" if config.device == "GPU" else ""}'
+        state_class = getattr(qulacs, class_name)
+
+        # Use Quantum Circuit Optimizer
+        if config.qco_enable:
+            if config.qco_method == "light":
+                for circuit in run_input:
+                    self.qc_opt.optimize_light(circuit)
+            elif config.qco_method == "greedy":
+                for circuit in run_input:
+                    self.qc_opt.optimize(circuit, config.qco_max_block_size)
+
+        # Use GPU if available
+        if config.device not in self._AVAILABLE_DEVICES:
+            if config.device == "GPU":
+                raise ValueError("GPU support not installed. Install qulacs-gpu.")
+            raise ValueError(f"Device {config.device} not found.")
+
+        # Create quantum states
+        states = [state_class(circuit.get_qubit_count()) for circuit in run_input]
+
+        # Submit job
+        job_id = str(uuid.uuid4())
+        qulacs_job = QulacsJob(
+            self,
+            job_id,
+            self._execute_circuits_job,
+            circuits=run_input,
+            states=states,
+            run_options=config,
         )
-        circuits: List[Circuit] = list(qiskit_to_qulacs(convert_input))
-        try:
-            tasks = zip(
-                [QuantumState(circuit.get_qubit_count()) for circuit in circuits],
-                circuits,
-            )
-        except Exception as ex:
-            raise ex
-
-        task_id = "id"
-
-        return QulacsJob(
-            task_id=task_id,
-            tasks=tasks,
-            backend=self,
-        )
-
-    def __repr__(self):
-        return f"QulacsBackend[{self.name}]"
+        qulacs_job.submit()
+        return qulacs_job
