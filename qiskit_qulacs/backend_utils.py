@@ -1,6 +1,7 @@
 """
 Qulacs simulator backend utils
 """
+
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 
@@ -18,10 +19,10 @@ def requires_submit(func):
     calling the method.
 
     Args:
-        func (callable): test function to be decorated.
+                    func (callable): test function to be decorated.
 
     Returns:
-        callable: the decorated function.
+                    callable: the decorated function.
     """
 
     @wraps(func)
@@ -33,47 +34,51 @@ def requires_submit(func):
     return _wrapper
 
 
+# write in the same order as QISKIT_OPERATION_MAP
 BASIS_GATES = sorted(
     [
-        "u1",
-        "u2",
-        "u3",
-        "rx",
-        "ry",
-        "rz",
-        "id",
         "x",
         "y",
         "z",
         "h",
+        "cx",
+        "swap",
+        "cswap",
+        "rx",
+        "ry",
+        "rz",
+        "id",
+        "ccx",
+        "u1",
+        "u2",
+        "u3",
+        "rxx",
+        "ryy",
+        "rzz",
         "s",
         "sdg",
-        "sx",
-        "sxdg",
         "t",
         "tdg",
-        "swap",
-        "cx",
-        "cz",
-        "ccx",
+        "sx",
+        "sxdg",
+        "unitary",
+        "ecr",
     ]
 )
+
+# Only CPU and GPU states are supported currently
+# used in the function `available_devices`
+states = {"CPU": "QuantumState", "GPU": "QuantumStateGpu"}
 
 
 def available_devices(devices):
     """Check available simulation devices by running a dummy circuit."""
-
     valid_devices = []
     for device in devices:
-        if device == "CPU":
+        state = states.get(device)
+        if state:
             try:
-                qulacs.QuantumState(1)
-                valid_devices.append(device)
-            except AttributeError:
-                pass
-        elif device == "GPU":
-            try:
-                qulacs.QuantumStateGpu(1)
+                getattr(qulacs, state)(1)
                 valid_devices.append(device)
             except AttributeError:
                 pass
