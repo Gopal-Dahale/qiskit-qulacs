@@ -1,7 +1,8 @@
 """QulacsEstimator class."""
+
 from __future__ import annotations
 
-import typing
+import time
 from collections.abc import Sequence
 from typing import Any
 
@@ -12,6 +13,7 @@ from qiskit.primitives import Estimator
 from qiskit.primitives.base import EstimatorResult
 from qiskit.primitives.primitive_job import PrimitiveJob
 from qiskit.primitives.utils import _circuit_key, _observable_key, init_observable
+from qiskit.quantum_info import SparsePauliOp
 from qiskit.quantum_info.operators.base_operator import BaseOperator
 
 import qulacs
@@ -19,9 +21,7 @@ from qiskit_qulacs.adapter import (
     convert_qiskit_to_qulacs_circuit,
     convert_sparse_pauliop_to_qulacs_obs,
 )
-
-if typing.TYPE_CHECKING:
-    from qiskit.quantum_info import SparsePauliOp
+from qulacs.circuit import QuantumCircuitOptimizer
 
 
 class QulacsEstimator(Estimator):
@@ -33,12 +33,13 @@ class QulacsEstimator(Estimator):
         options: Default options.
 
         Raises:
-            QiskitError: if some classical bits are not used for measurements.
+                QiskitError: if some classical bits are not used for measurements.
         """
         super().__init__(options=options)
         self._circuit_ids = {}  # type: ignore
         self._observable_ids = {}  # type: ignore
         self._states = ["QuantumState", "QuantumStateGpu"]
+        self.qc_opt = QuantumCircuitOptimizer()
 
     def _call(
         self,
@@ -49,6 +50,9 @@ class QulacsEstimator(Estimator):
     ) -> EstimatorResult:
         # Initialize metadata
         gpu = run_options.pop("gpu", False)
+        qco_enable = run_options.pop("qco_enable", False)
+        qco_method = run_options.pop("qco_method", "light")
+        qco_max_block_size = run_options.pop("qco_max_block_size", 2)
 
         metadata: list[dict[str, Any]] = [{} for _ in range(len(circuits))]
 
@@ -60,16 +64,29 @@ class QulacsEstimator(Estimator):
                     f"the number of parameters ({len(self._parameters[i])})."
                 )
 
-            bound_circuits.append(self._circuits[i](np.array(value)))
+            bound_circuits.append(self._circuits[i](np.array(value))[0])
 
         sorted_obs = [self._observables[i] for i in observables]
-        expectation_values = []
+        expectation_values = np.zeros(len(bound_circuits))
 
-        for circ, obs, _ in zip(bound_circuits, sorted_obs, metadata):
+        for i, (circ, obs, metadatum) in enumerate(
+            zip(bound_circuits, sorted_obs, metadata)
+        ):
+
+            start = time.time()  # Start timer
+
             state = getattr(qulacs, self._states[gpu])(circ.get_qubit_count())
+
+            if qco_enable:
+                if qco_method == "light":
+                    self.qc_opt.optimize_light(circ)
+                elif qco_method == "greedy":
+                    self.qc_opt.optimize(circ, qco_max_block_size)
+
             circ.update_quantum_state(state)
-            expectation_value = obs.get_expectation_value(state)
-            expectation_values.append(expectation_value)
+            expectation_values[i] = obs.get_expectation_value(state)
+
+            metadatum["time_taken"] = time.time() - start  # End timer
 
         return EstimatorResult(np.real_if_close(expectation_values), metadata)
 
@@ -89,7 +106,7 @@ class QulacsEstimator(Estimator):
             else:
                 circuit_indices.append(len(self._circuits))
                 self._circuit_ids[key] = len(self._circuits)
-                self._circuits.append(convert_qiskit_to_qulacs_circuit(circuit)[0])
+                self._circuits.append(convert_qiskit_to_qulacs_circuit(circuit))
                 self._parameters.append(circuit.parameters)
 
         observable_indices = []
@@ -114,5 +131,5 @@ class QulacsEstimator(Estimator):
             parameter_values,
             **run_options,
         )
-        job.submit()
+        job._submit()
         return job
