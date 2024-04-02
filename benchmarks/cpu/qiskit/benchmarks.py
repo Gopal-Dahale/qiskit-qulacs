@@ -1,17 +1,16 @@
 import numpy as np
 import pytest
-from qiskit import Aer
-from qiskit.algorithms.gradients import ReverseEstimatorGradient
 from qiskit.circuit.library import TwoLocal
-from qiskit.primitives import Estimator
+from qiskit.primitives import Estimator, Sampler
 from qiskit.quantum_info import SparsePauliOp
+from qiskit_aer import Aer
+from qiskit_algorithms.gradients import ReverseEstimatorGradient
 
 np.random.seed(0)
+nqubits_list = range(4, 21)
+nlayers = 3
 
-
-max_parallel_threads = 12
-gpu = False
-method = "statevector"
+# naming convention for benchmark group: libname_testname (only one underscore)
 
 
 def generate_circuit(nqubits):
@@ -20,30 +19,31 @@ def generate_circuit(nqubits):
         ["rx", "ry", "rz"],
         ["cx"],
         "linear",
-        reps=3,
+        reps=nlayers,
         flatten=True,
-    ).decompose()
+    )
     params = np.random.rand(ansatz.num_parameters)
     return ansatz, params
 
 
 def execute_statevector(benchmark, circuit, params):
     backend_options = {
-        "method": method,
+        "method": "statevector",
         "precision": "double",
-        "max_parallel_threads": max_parallel_threads,
+        "max_parallel_threads": 12,
         "fusion_enable": True,
         "fusion_threshold": 14,
         "fusion_max_qubit": 5,
     }
 
-    circuit = circuit.bind_parameters(params)
+    circuit = circuit.assign_parameters(params)
+    circuit.save_statevector()
 
-    backend = Aer.get_backend("statevector_simulator")
+    backend = Aer.get_backend("aer_simulator_statevector")
     backend.set_options(**backend_options)
 
     def evalfunc(backend, circuit):
-        backend.run(circuit).result()
+        sv = backend.run(circuit).result().get_statevector()
 
     benchmark(evalfunc, backend, circuit)
 
@@ -52,21 +52,27 @@ def execute_estimator(benchmark, circuit, obs, params):
     estimator = Estimator()
 
     def evalfunc(estimator, circuit, obs, params):
-        estimator.run([circuit], [obs], [params]).result()
+        expval = estimator.run([circuit], [obs], [params]).result().values[0]
 
     benchmark(evalfunc, estimator, circuit, obs, params)
 
 
-def execute_gradient(benchmark, circuit, obs, params):
+def execute_sampler(benchmark, circuit, params):
+    sampler = Sampler()
+
+    def evalfunc(sampler, circuit, params):
+        quasi_dists = sampler.run([circuit], [params]).result().quasi_dists
+
+    benchmark(evalfunc, sampler, circuit, params)
+
+
+def execute_estgradient(benchmark, circuit, obs, params):
     estimator_grad = ReverseEstimatorGradient()
 
     def evalfunc(estimator_grad, circuit, obs, params):
-        estimator_grad.run([circuit], [obs], [params]).result()
+        grads = estimator_grad.run([circuit], [obs], [params]).result().gradients[0]
 
     benchmark(evalfunc, estimator_grad, circuit, obs, params)
-
-
-nqubits_list = range(4, 21)
 
 
 @pytest.mark.parametrize("nqubits", nqubits_list)
@@ -85,8 +91,16 @@ def test_estimator(benchmark, nqubits):
 
 
 @pytest.mark.parametrize("nqubits", nqubits_list)
-def test_gradient(benchmark, nqubits):
-    benchmark.group = "qiskit_gradient"
+def test_sampler(benchmark, nqubits):
+    benchmark.group = "qiskit_sampler"
+    circuit, params = generate_circuit(nqubits)
+    circuit.measure_all()
+    execute_sampler(benchmark, circuit, params)
+
+
+@pytest.mark.parametrize("nqubits", nqubits_list)
+def test_estgradient(benchmark, nqubits):
+    benchmark.group = "qiskit_estgradient"
     circuit, params = generate_circuit(nqubits)
     obs = SparsePauliOp.from_list([("Z" * nqubits, 1)])
-    execute_gradient(benchmark, circuit, obs, params)
+    execute_estgradient(benchmark, circuit, obs, params)
