@@ -18,4 +18,4 @@ black[jupyter]~=22.1
 tox==3.24.5
 ddt>=1.2.0,!=1.4.0,!=1.4.3
 myst_parser>=1.0.0
-qiskit-sphinx-theme >=1.14.0"
+qiskit-sphinx-theme >=1.14.0
