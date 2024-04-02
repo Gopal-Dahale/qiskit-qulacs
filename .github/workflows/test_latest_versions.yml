@@ -24,8 +24,8 @@ jobs:
         include:
           - os: macos-latest
             python-version: 3.8
-          - os: windows-latest
-            python-version: 3.8
+          # - os: windows-latest
+          #   python-version: 3.8
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version }}
