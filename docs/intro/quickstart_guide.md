@@ -4,7 +4,7 @@ Welcome to the Quickstart Guide for Qiskit-Qulacs! This guide will help you quic
 
 ## Installation
 
-See [INSTALL.md](INSTALL.md) for installation instructions.
+See [Installation Guide](INSTALL.md) for instructions.
 
 ## Usage
 
@@ -39,28 +39,32 @@ statevector = result.get_statevector()
 
 # Print the statevector
 print(statevector)
+
+# Output: [0.70710678+0.j 0.        +0.j 0.        +0.j 0.70710678+0.j]
 ```
 
 ### QulacsEstimator
-The QulacsEstimator is based on qiskit's estimator primitive. It allows you to estimate expectation values of observables using Qulacs. Here's a basic example of how to use it:
+The QulacsEstimator is based on qiskit's estimator primitive but behind the scenes uses qulacs to compute the expectation values quickly. It allows you to estimate expectation values of observables using Qulacs. Here's a basic example of how to use it:
 
 ```python
-from qiskit.circuit.library import TwoLocal
-from qiskit_qulacs.qulacs_estimator import QulacsEstimator
-from qiskit.quantum_info import SparsePauliOp
 import numpy as np
+from qiskit.circuit.library import TwoLocal
+from qiskit.quantum_info import SparsePauliOp
+
+from qiskit_qulacs.qulacs_estimator import QulacsEstimator
+
+np.random.seed(42)
 
 # Create a two-local quantum circuit with 3 qubits
-qc = TwoLocal(3, ['ry', 'rz', 'rx'], ['cx'],
-              'linear',
-              1,
-              insert_barriers=False).decompose()
+qc = TwoLocal(
+    3, ["ry", "rz", "rx"], ["cx"], "linear", 1, insert_barriers=False
+).decompose()
 
 # Generate random parameter values for the circuit
 params = np.random.rand(qc.num_parameters)
 
 # Create a SparsePauliOp observable
-obs = SparsePauliOp.from_list([('Z' * qc.num_qubits, 0.5)])
+obs = SparsePauliOp.from_list([("Z" * qc.num_qubits, 0.5)])
 
 # Initialize QulacsEstimator
 qulacs_estimator = QulacsEstimator()
@@ -76,26 +80,43 @@ expectation_value = result.values[0]
 
 # Print the expectation value
 print("Expectation value:", expectation_value)
+
+# Output: Expectation value: -0.018581644467403284
 ```
 
 ### QulacsEstimatorGradient
-The QulacsEstimatorGradient is based to qiskit's gradient framework. It allows you to compute gradients of quantum circuits using Qulacs. Here's a basic example in based on the previous code:
+The QulacsEstimatorGradient is based to qiskit's gradient framework. It allows you to compute gradients of quantum circuits using Qulacs. Here's a basic 1 qubit example.
 
 ```python
+import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter
+from qiskit.quantum_info import SparsePauliOp
+
 from qiskit_qulacs.qulacs_estimator_gradient import QulacsEstimatorGradient
 
-qulacs_grad = QulacsEstimatorGradient(qulacs_estimator)
+# Create a two-local quantum circuit with 1 qubit with a parameter
+qc = QuantumCircuit(1)
 
-job = qulacs_grad.run(
-    [qc],
-    [obs],
-    [params],
-)
+x = Parameter("x")
+qc.rx(x, 0)
 
+# Create a SparsePauliOp observable
+obs = SparsePauliOp.from_list([("Z" * qc.num_qubits, 0.5)])
+
+# Initialize QulacsEstimatorGradient
+qulacs_grad = QulacsEstimatorGradient()
+
+# Run the job with the circuit, observable, and parameters
+job = qulacs_grad.run([qc], [obs], [[np.pi / 3]])
+
+# Get the result of the job and retrieve the gradients
 result = job.result()
 gradient = result.gradients[0]
 
 print("Gradient:", gradient)
+
+# Output: Gradient: [-0.4330127]
 ```
 
 ## Conclusion

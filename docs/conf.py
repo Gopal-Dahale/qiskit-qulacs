@@ -16,15 +16,21 @@
 Sphinx documentation builder
 """
 
+import datetime
+import os
+
 # General options:
 from pathlib import Path
-import os
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from importlib_metadata import version as metadata_version
 
 project = "Qiskit-Qulacs"
-copyright = "2023"  # pylint: disable=redefined-builtin
 author = "Gopal Ramesh Dahale"
+copyright = (
+    f"2023-{datetime.date.today().year}, {author}"  # pylint: disable=redefined-builtin
+)
+
 
 _rootdir = Path(__file__).parent.parent
 
@@ -65,7 +71,10 @@ modindex_common_prefix = ["qiskit_qulacs."]
 # html theme options
 html_theme = "qiskit-ecosystem"
 html_static_path = ["_static"]
-html_logo = "_static/images/logo.png"
+# html_logo = "_static/images/logo.png"
+html_last_updated_fmt = "%Y/%m/%d"
+html_title = f"{project} {version}"
+
 
 # autodoc/autosummary options
 autosummary_generate = True

@@ -1,4 +1,4 @@
-# Qiskit-Qulacs Beginner's Guide
+# Beginner's Guide
 
 Welcome to the Qiskit-Qulacs Beginner's Guide! This guide is designed to provide new users with an overview of the Qiskit-Qulacs project and its capabilities. It will walk you through the installation process, introduce you to the basics of the API, and provide an example problem to solve using the software.
 
@@ -7,21 +7,8 @@ Welcome to the Qiskit-Qulacs Beginner's Guide! This guide is designed to provide
 Qiskit-Qulacs is a plugin for Qiskit that integrates the Qulacs library as a backend. The project aims to provide users with a powerful tool for quantum computing simulations and algorithm development. By leveraging [Qulacs'](https://github.com/qulacs/qulacs#performance) high-performance quantum circuit simulator, users can explore and experiment with various quantum computing concepts and algorithms.
 
 ## Installation
-To get started with Qiskit-Qulacs, follow these steps for installation:
 
-Install Python and virtual env. Then follow the below steps.
-
-```
-git clone https://github.com/Gopal-Dahale/qiskit-qulacs.git
-cd qiskit-qulacs
-virtualenv venv
-.
-.
-.
-.venv/bin/activate
-pip install -r requirements.txt
-pip install .
-```
+For detailed installation instructions, read the [Installation Guide](INSTALL.md).
 
 ## Usage
 
@@ -33,27 +20,34 @@ Once installed, you can use Qiskit-Qulacs through the Qiskit API. Here are some 
 
 ## Example Problem
 
-To demonstrate the usage of Qiskit-Qulacs, let's solve a simple example problem: creating an entangled state.
+To demonstrate the usage of Qiskit-Qulacs, let's solve a simple example problem: creating a 3 qubit GHZ state.
 
 ```python
-import qiskit
+import matplotlib.pyplot as plt
+from qiskit import QuantumCircuit
+from qiskit.visualization import plot_histogram
+
 from qiskit_qulacs import QulacsProvider
 
-# Create a quantum circuit
-qc = qiskit.QuantumCircuit(2)
+# Create a bell state
+qc = QuantumCircuit(3)
 qc.h(0)
 qc.cx(0, 1)
+qc.cx(0, 2)
 
 # Use Qiskit-Qulacs to run the circuit
-backend = QulacsProvider().get_backend('qulacs_simulator')
-result = backend.run(qc).result()
+backend = QulacsProvider().get_backend("qulacs_simulator")
+result = backend.run(qc, shots=1024, seed_simulator=42).result()
+counts = result.get_counts()
 
-# Get the statevector
-statevector = result.get_statevector()
-
-# Print the statevector
-print(statevector)
+# Visualization
+plot_histogram(counts)
+plt.show()
 ```
+
+Output:
+
+<img src='../_static/images/ghz_state.png' alt='3_qubit_ghz_state' width=500>
 
 ## Conclusion
 
