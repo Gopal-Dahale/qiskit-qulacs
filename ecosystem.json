@@ -5,16 +5,16 @@
     ],
     "language": {
         "name": "python",
-        "versions": ["3.9"]
+        "versions": ["3.8", "3.9", "3.10", "3.11", "3.12"]
     },
     "tests_command": [
-        "pytest"
+        "python -m pytest tests -v --doctest-modules"
     ],
     "styles_check_command": [
-        "pylint -rn qiskit_qulacs tests"
+        "pylint -rn --fail-under=9 qiskit_qulacs tests"
     ],
     "coverages_check_command": [
-        "coverage3 run -m pytest",
+        "coverage3 run --source qiskit_qulacs --parallel-mode -m pytest tests --doctest-modules",
         "coverage3 report --fail-under=80"
     ]
 }

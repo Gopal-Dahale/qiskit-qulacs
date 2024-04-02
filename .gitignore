@@ -8,7 +8,7 @@ venv/
 .mypy_cache/
 bin/
 install.sh
-qulacs/
+/qulacs
 
 # Distribution / packaging
 .Python
@@ -51,9 +51,8 @@ coverage.xml
 
 # virtualenv
 ENV/
-qislacs/
+qq/
 
 # Sphinx documentation
 docs/_build/
 docs/stubs/
-qiskit-qulacs-backend.ipynb
