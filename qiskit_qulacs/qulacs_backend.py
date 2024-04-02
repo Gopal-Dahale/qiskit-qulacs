@@ -1,10 +1,12 @@
 """QulacsBackend class."""
+
 import copy
 import time
 import uuid
 from collections import Counter
 from typing import List, Union
 
+import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.providers import BackendV1 as Backend
 from qiskit.providers import JobStatus, Options
@@ -13,7 +15,6 @@ from qiskit.result import Result
 from qiskit.result.models import ExperimentResult, ExperimentResultData
 
 import qulacs
-from qulacs import QuantumCircuit as Circuit
 from qulacs.circuit import QuantumCircuitOptimizer
 
 from .adapter import MAX_QUBITS, qiskit_to_qulacs
@@ -78,6 +79,11 @@ class QulacsBackend(Backend):
         # Quantum circuit optimizer (if needed)
         self.qc_opt = QuantumCircuitOptimizer()
 
+        self.class_suffix = {
+            "GPU": "Gpu",
+            "CPU": "",
+        }
+
     @classmethod
     def _default_options(cls):
         return Options(
@@ -105,36 +111,47 @@ class QulacsBackend(Backend):
         """Run a job"""
 
         shots = run_options.shots
-        seed = run_options.seed_simulator
+        seed = (
+            run_options.seed_simulator
+            if run_options.seed_simulator
+            else np.random.randint(1000)
+        )
 
         # Start timer
         start = time.time()
 
         expt_results = []
-        for state, circuit in zip(states, circuits):
-            circuit.update_quantum_state(state)
-            n = circuit.get_qubit_count()
+        if shots:
+            for state, circuit in zip(states, circuits):
+                circuit.update_quantum_state(state)
+                n = circuit.get_qubit_count()
 
-            if shots:
-                # Sampling
-                samples = state.sampling(shots, seed) if seed else state.sampling(shots)
+                samples = state.sampling(shots, seed)
                 bitstrings = [format(x, f"0{n}b") for x in samples]
                 counts = dict(Counter(bitstrings))
-                data = ExperimentResultData(counts=counts, memory=bitstrings)
-            else:
-                # Statevector
-                data = ExperimentResultData(
-                    statevector=state.get_vector(),
-                )
 
-            expt_results.append(
-                ExperimentResult(
-                    shots=shots,
-                    success=True,
-                    status=JobStatus.DONE,
-                    data=data,
+                expt_results.append(
+                    ExperimentResult(
+                        shots=shots,
+                        success=True,
+                        status=JobStatus.DONE,
+                        data=ExperimentResultData(counts=counts, memory=bitstrings),
+                    )
                 )
-            )
+        else:
+            for state, circuit in zip(states, circuits):
+                circuit.update_quantum_state(state)
+                # Statevector
+                expt_results.append(
+                    ExperimentResult(
+                        shots=shots,
+                        success=True,
+                        status=JobStatus.DONE,
+                        data=ExperimentResultData(
+                            statevector=state.get_vector(),
+                        ),
+                    )
+                )
 
         return Result(
             backend_name=self.name(),
@@ -152,13 +169,20 @@ class QulacsBackend(Backend):
         run_input: Union[QuantumCircuit, List[QuantumCircuit]],
         **run_options,
     ) -> QulacsJob:
-        if isinstance(run_input, QuantumCircuit):
-            run_input = [run_input]
+        run_input = [run_input] if isinstance(run_input, QuantumCircuit) else run_input
 
         run_input = list(qiskit_to_qulacs(run_input))
-        config = generate_config(self.options, run_options)
+        config = (
+            generate_config(self.options, run_options) if run_options else self.options
+        )
 
-        class_name = f'QuantumState{"Gpu" if config.device == "GPU" else ""}'
+        # Use GPU if available
+        if config.device not in self.available_devices():
+            if config.device == "GPU":
+                raise ValueError("GPU support not installed. Install qulacs-gpu.")
+            raise ValueError(f"Device {config.device} not found.")
+
+        class_name = f'QuantumState{self.class_suffix.get(config.device, "")}'
         state_class = getattr(qulacs, class_name)
 
         # Use Quantum Circuit Optimizer
@@ -169,12 +193,6 @@ class QulacsBackend(Backend):
             elif config.qco_method == "greedy":
                 for circuit in run_input:
                     self.qc_opt.optimize(circuit, config.qco_max_block_size)
-
-        # Use GPU if available
-        if config.device not in self.available_devices():
-            if config.device == "GPU":
-                raise ValueError("GPU support not installed. Install qulacs-gpu.")
-            raise ValueError(f"Device {config.device} not found.")
 
         # Create quantum states
         states = [state_class(circuit.get_qubit_count()) for circuit in run_input]
