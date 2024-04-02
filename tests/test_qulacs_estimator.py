@@ -1,4 +1,5 @@
 """Tests for qulacs estimator"""
+
 from unittest import TestCase
 
 import numpy as np
@@ -6,9 +7,10 @@ from ddt import data, ddt, unpack
 from qiskit.circuit import Parameter, QuantumCircuit
 from qiskit.circuit.library import RealAmplitudes
 from qiskit.exceptions import QiskitError
-from qiskit.primitives import BaseEstimator, EstimatorResult
-from qiskit.providers import JobV1
-from qiskit.quantum_info import Operator, Pauli, PauliList, SparsePauliOp
+from qiskit.primitives import EstimatorResult
+from qiskit.primitives.base.base_primitive_job import BasePrimitiveJob
+from qiskit.primitives.base.validation import _validate_observables
+from qiskit.quantum_info import Pauli, SparsePauliOp
 
 from qiskit_qulacs.qulacs_estimator import QulacsEstimator
 
@@ -18,7 +20,7 @@ class TestQulacsEstimator(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.ansatz = RealAmplitudes(num_qubits=2, reps=2)
+        self.ansatz = RealAmplitudes(num_qubits=2, reps=2).decompose()
         self.observable = SparsePauliOp.from_list(
             [
                 ("II", -1.052373245772859),
@@ -31,8 +33,8 @@ class TestQulacsEstimator(TestCase):
         self.expvals = -1.0284380963435145, -1.284366511861733
 
         self.psi = (
-            RealAmplitudes(num_qubits=2, reps=2),
-            RealAmplitudes(num_qubits=2, reps=3),
+            RealAmplitudes(num_qubits=2, reps=2).decompose(),
+            RealAmplitudes(num_qubits=2, reps=3).decompose(),
         )
         self.params = tuple(psi.parameters for psi in self.psi)
         self.hamiltonian = (
@@ -57,7 +59,7 @@ class TestQulacsEstimator(TestCase):
         # Specify the circuit and observable by indices.
         # calculate [ <psi1(theta1)|H1|psi1(theta1)> ]
         job = qulacs_estimator.run([psi1], [hamiltonian1], [theta1])
-        self.assertIsInstance(job, JobV1)
+        self.assertIsInstance(job, BasePrimitiveJob)
         result = job.result()
         self.assertIsInstance(result, EstimatorResult)
         np.testing.assert_allclose(result.values, [1.5555572817900956])
@@ -90,7 +92,7 @@ class TestQulacsEstimator(TestCase):
 
     def test_estiamtor_run_no_params(self):
         """test for estimator without parameters"""
-        circuit = self.ansatz.bind_parameters([0, 1, 1, 2, 3, 5])
+        circuit = self.ansatz.assign_parameters([0, 1, 1, 2, 3, 5])
         est = QulacsEstimator()
         result = est.run([circuit], [self.observable]).result()
         self.assertIsInstance(result, EstimatorResult)
@@ -233,7 +235,7 @@ class TestQulacsEstimator(TestCase):
 
     def test_run_numpy_params(self):
         """Test for numpy array as parameter values"""
-        qc = RealAmplitudes(num_qubits=2, reps=2)
+        qc = RealAmplitudes(num_qubits=2, reps=2).decompose()
         op = SparsePauliOp.from_list([("IZ", 1), ("XI", 2), ("ZY", -1)])
         k = 5
         params_array = np.random.rand(k, qc.num_parameters)
@@ -252,21 +254,18 @@ class TestQulacsEstimator(TestCase):
             self.assertEqual(len(result.metadata), k)
             np.testing.assert_allclose(result.values, target.values)
 
-    def test_run_with_operator(self):
-        """test for run with Operator as an observable"""
-        circuit = self.ansatz.bind_parameters([0, 1, 1, 2, 3, 5])
-        matrix = Operator(
-            [
-                [-1.06365335, 0.0, 0.0, 0.1809312],
-                [0.0, -1.83696799, 0.1809312, 0.0],
-                [0.0, 0.1809312, -0.24521829, 0.0],
-                [0.1809312, 0.0, 0.0, -1.06365335],
-            ]
-        )
+    def test_run_with_shots_option(self):
+        """test with shots option."""
         est = QulacsEstimator()
-        result = est.run([circuit], [matrix]).result()
+        result = est.run(
+            [self.ansatz],
+            [self.observable],
+            parameter_values=[[0, 1, 1, 2, 3, 5]],
+            shots=1024,
+            seed=15,
+        ).result()
         self.assertIsInstance(result, EstimatorResult)
-        np.testing.assert_allclose(result.values, [-1.284366511861733])
+        np.testing.assert_allclose(result.values, [-1.28436651])
 
     def test_run_with_shots_option_none(self):
         """test with shots=None option. Seed is ignored then."""
@@ -287,6 +286,38 @@ class TestQulacsEstimator(TestCase):
         ).result()
         np.testing.assert_allclose(result_42.values, result_15.values)
 
+    def test_options(self):
+        """Test for options"""
+        with self.subTest("init"):
+            estimator = QulacsEstimator(options={"shots": 3000})
+            self.assertEqual(estimator.options.get("shots"), 3000)
+            self.assertEqual(estimator.options.get("qco_enable"), None)
+            self.assertEqual(estimator.options.get("qco_method"), None)
+            self.assertEqual(estimator.options.get("qco_max_block_size"), None)
+        with self.subTest("set_options"):
+            estimator.set_options(
+                shots=1024,
+                seed=15,
+                qco_enable=True,
+                qco_method="greedy",
+                qco_max_block_size=5,
+            )
+            self.assertEqual(estimator.options.get("shots"), 1024)
+            self.assertEqual(estimator.options.get("seed"), 15)
+            self.assertEqual(estimator.options.get("qco_enable"), True)
+            self.assertEqual(estimator.options.get("qco_method"), "greedy")
+            self.assertEqual(estimator.options.get("qco_max_block_size"), 5)
+        with self.subTest("run"):
+            result = estimator.run(
+                [self.ansatz],
+                [self.observable],
+                parameter_values=[[0, 1, 1, 2, 3, 5]],
+                qco_enable=True,
+                qco_method="light",
+            ).result()
+            self.assertIsInstance(result, EstimatorResult)
+            np.testing.assert_allclose(result.values, [-1.28436651])
+
 
 @ddt
 class TestObservableValidation(TestCase):
@@ -295,7 +326,6 @@ class TestObservableValidation(TestCase):
     @data(
         ("IXYZ", (SparsePauliOp("IXYZ"),)),
         (Pauli("IXYZ"), (SparsePauliOp("IXYZ"),)),
-        (PauliList("IXYZ"), (SparsePauliOp("IXYZ"),)),
         (SparsePauliOp("IXYZ"), (SparsePauliOp("IXYZ"),)),
         (
             ["IXYZ", "ZYXI"],
@@ -306,27 +336,23 @@ class TestObservableValidation(TestCase):
             (SparsePauliOp("IXYZ"), SparsePauliOp("ZYXI")),
         ),
         (
-            [PauliList("IXYZ"), PauliList("ZYXI")],
-            (SparsePauliOp("IXYZ"), SparsePauliOp("ZYXI")),
-        ),
-        (
             [SparsePauliOp("IXYZ"), SparsePauliOp("ZYXI")],
             (SparsePauliOp("IXYZ"), SparsePauliOp("ZYXI")),
         ),
     )
     @unpack
-    def test_validate_observables(self, obsevables, expected):
+    def test_validate_observables(self, observables, expected):
         """Test obsevables standardization."""
-        self.assertEqual(BaseEstimator._validate_observables(obsevables), expected)
+        self.assertEqual(_validate_observables(observables), expected)
 
     @data(None, "ERROR")
     def test_qiskit_error(self, observables):
         """Test qiskit error if invalid input."""
         with self.assertRaises(QiskitError):
-            BaseEstimator._validate_observables(observables)
+            _validate_observables(observables)
 
     @data((), [])
     def test_value_error(self, observables):
         """Test value error if no obsevables are provided."""
         with self.assertRaises(ValueError):
-            BaseEstimator._validate_observables(observables)
+            _validate_observables(observables)

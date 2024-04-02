@@ -1,45 +1,24 @@
 """Tests for qulacs backend."""
 
-from typing import Dict, List
 from unittest import TestCase
 
 import numpy as np
-from qiskit import BasicAer, QuantumCircuit, transpile
+from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.random import random_circuit
+from qiskit.result import Result
+from qiskit_aer import Aer
 
 from qiskit_qulacs.qulacs_backend import QulacsBackend
+from tests.utils import dicts_almost_equal
 
 _EPS = 1e-10  # global variable used to chop very small numbers to zero
 
 
-def combine_dicts(
-    dict1: Dict[str, float], dict2: Dict[str, float]
-) -> Dict[str, List[float]]:
-    """Combines dictionaries with different keys.
-
-    Args:
-                    dict1: first
-                    dict2: second
-
-    Returns:
-                    merged dicts with list of keys
-    """
-    combined_dict: Dict[str, List[float]] = {}
-    for key in dict1.keys():
-        if key in combined_dict:
-            combined_dict[key].append(dict1[key])
-        else:
-            combined_dict[key] = [dict1[key]]
-    for key in dict2.keys():
-        if key in combined_dict:
-            combined_dict[key].append(dict2[key])
-        else:
-            combined_dict[key] = [dict2[key]]
-    return combined_dict
-
-
 class TestQulacsBackend(TestCase):
     """Tests BraketBackend."""
+
+    def setUp(self):
+        self.aer_backend = Aer.get_backend("aer_simulator_statevector")
 
     def test_qulacs_backend_output(self):
         """Test qulacs backend output"""
@@ -81,20 +60,107 @@ class TestQulacsBackend(TestCase):
 
     def test_random_circuits(self):
         """Tests with random circuits."""
-        backend = QulacsBackend()
-        aer_backend = BasicAer.get_backend("statevector_simulator")
+        qulacs_backend = QulacsBackend()
 
         for i in range(1, 10):
             with self.subTest(f"Random circuit with {i} qubits."):
-                circuit = random_circuit(i, 5, seed=42)
-                qulacs_result = backend.run(circuit).result().get_statevector()
+                qiskit_circuit = random_circuit(i, 5, seed=42)
+                transpiled_qiskit_circuit = transpile(qiskit_circuit, qulacs_backend)
 
-                transpiled_aer_circuit = transpile(
-                    circuit, backend=aer_backend, seed_transpiler=42
+                qulacs_result = (
+                    qulacs_backend.run(transpiled_qiskit_circuit)
+                    .result()
+                    .get_statevector()
                 )
 
+                transpiled_qiskit_circuit.save_statevector()
                 aer_result = (
-                    aer_backend.run(transpiled_aer_circuit).result().get_statevector()
+                    self.aer_backend.run(transpiled_qiskit_circuit)
+                    .result()
+                    .get_statevector()
+                    .data
                 )
 
                 self.assertTrue(np.linalg.norm(qulacs_result - aer_result) < _EPS)
+
+    def test_single_shot(self):
+        """Test single shot run."""
+        bell = QuantumCircuit(2)
+        bell.h(0)
+        bell.cx(0, 1)
+
+        shots = 1
+        qulacs_backend = QulacsBackend()
+        result = qulacs_backend.run(bell, shots=shots, seed_simulator=10).result()
+
+        self.assertEqual(result.success, True)
+
+    def test_against_reference(self):
+        """Test data counts output for single circuit run against reference."""
+        qulacs_backend = QulacsBackend()
+        shots = 1024
+        threshold = 0.04 * shots
+
+        qc = QuantumCircuit(6)
+        qc.h(range(6))
+        qc.cx([0, 1, 2], [3, 4, 5])
+
+        counts = (
+            qulacs_backend.run(qc, shots=shots, seed_simulator=10).result().get_counts()
+        )
+        counts = {i: j / shots for i, j in counts.items()}
+
+        qc.save_statevector()
+        target = (
+            self.aer_backend.run(qc, shots=shots, seed_simulator=10)
+            .result()
+            .get_counts()
+        )
+        error_msg = dicts_almost_equal(counts, target, threshold)
+
+        if error_msg:
+            msg = self._formatMessage(None, error_msg)
+            raise self.failureException(msg)
+
+    def test_options(self):
+        """Test for options"""
+        backend_options = {
+            "shots": 3000,
+            "seed_simulator": 42,
+            "device": "CPU",
+            "qco_enable": True,
+            "qco_method": "greedy",
+            "qco_max_block_size": 5,
+        }
+
+        with self.subTest("set_options"):
+            qulacs_backend = QulacsBackend()
+            qulacs_backend.set_options(**backend_options)
+            self.assertEqual(qulacs_backend.options.get("shots"), 3000)
+            self.assertEqual(qulacs_backend.options.get("seed_simulator"), 42)
+            self.assertEqual(qulacs_backend.options.get("device"), "CPU")
+            self.assertEqual(qulacs_backend.options.get("qco_enable"), True)
+            self.assertEqual(qulacs_backend.options.get("qco_method"), "greedy")
+            self.assertEqual(qulacs_backend.options.get("qco_max_block_size"), 5)
+
+        with self.subTest("run"):
+            bell = QuantumCircuit(2)
+            bell.h(0)
+            bell.cx(0, 1)
+
+            qulacs_backend = QulacsBackend()
+            result = qulacs_backend.run(
+                [bell],
+                qco_enable=True,
+                qco_method="light",
+            ).result()
+            self.assertIsInstance(result, Result)
+            np.testing.assert_allclose(
+                result.get_statevector(),
+                (1 / np.sqrt(2)) * np.array([1.0, 0.0, 0.0, 1.0]),
+            )
+
+    def test_repr(self):
+        """Test string repr"""
+        qulacs_backend = QulacsBackend()
+        self.assertEqual(str(qulacs_backend), "qulacs_simulator")
