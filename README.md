@@ -1,9 +1,13 @@
+# Qiskit-Qulacs
+
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-informational)
 [![Python](https://img.shields.io/badge/Python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11-informational)](https://www.python.org/)
 [![Qiskit](https://img.shields.io/badge/Qiskit-%E2%89%A5%201.0.0-6133BD)](https://github.com/Qiskit/qiskit)
 [![License](https://img.shields.io/github/license/qiskit-community/quantum-prototype-template?label=License)](https://github.com/qiskit-community/quantum-prototype-template/blob/main/LICENSE.txt)
 [![Code style: Black](https://img.shields.io/badge/Code%20style-Black-000.svg)](https://github.com/psf/black)
 [![PyPI version](https://badge.fury.io/py/qiskit-qulacs.svg)](https://badge.fury.io/py/qiskit-qulacs)
+[![Docs](https://img.shields.io/badge/netlify-docs-lime?logo=netlify&labelColor=%23555a60&color=%23bef9c6)](https://qiskit-qulacs.netlify.app/)
+[![Qiskit Ecosystem](https://img.shields.io/badge/Qiskit-Ecosystem-blueviolet)](https://qiskit.github.io/ecosystem/)
 [![Tests](https://github.com/Gopal-Dahale/qiskit-qulacs/actions/workflows/test_latest_versions.yml/badge.svg)](https://github.com/Gopal-Dahale/qiskit-qulacs/actions/workflows/test_latest_versions.yml)
 [![Coverage Status](https://coveralls.io/repos/github/Gopal-Dahale/qiskit-qulacs/badge.svg?branch=main)](https://coveralls.io/github/Gopal-Dahale/qiskit-qulacs?branch=main)
 [![Downloads](https://static.pepy.tech/badge/qiskit-qulacs)](https://pepy.tech/project/qiskit-qulacs)
@@ -14,6 +18,7 @@ Qiskit-Qulacs allows users to execute Qiskit programs using Qulacs backend.
 
 **Qiskit-Qulacs is actively being developed, and we welcome your input and suggestions on the API and use cases. If you have any ideas or feedback, please open a GitHub issue or contact us. We are interested in hearing about your experiences using the library.**
 
+Qiskit-Qulacs project was presented in the Qiskit DemoDays 🚀! Check out the recording and demo [here](https://github.com/Qiskit/feedback/wiki/Qiskit-DemoDays#apr-11-2024).
 
 1.  [About](docs/intro/project_overview.md)
 2.  [Beginner's Guide](docs/intro/beginners_guide.md)
